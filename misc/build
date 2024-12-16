@@ -1,0 +1,6 @@
+#!/bin/bash
+
+files=( "f1" "f2" "f3" )
+
+go build -o hello hello.go 
+./hello ${files[@]}
