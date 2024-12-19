@@ -3,8 +3,10 @@ package main
 import (
   "fmt"
   "os"
+  "bufio"
   "strings"
   "regexp"
+  "strconv"
 )
 
 // alias, not new incompatible type
@@ -23,36 +25,59 @@ type Rule struct {
 func line_to_rule(line string) Rule {
   a := strings.Split(line, "contain")
   container := strings.TrimSpace(strings.Split(a[0], "bags")[0])
-  fmt.Printf("%#v\n", container)
 
-  fmt.Println("children bags:")
+  var children []Child
+
+  r := regexp.MustCompile(" ([0-9]+) (.*) bags?")
+
   if a[1] != " no other bags" {
     for _, child := range strings.Split(a[1], ",") {
-      r := regexp.MustCompile(" ([0-9]+) (.*) bags?")
-      fmt.Printf("%#v\n", r.FindStringSubmatch(child))
+      b := r.FindStringSubmatch(child)
+      amt, err := strconv.Atoi(b[1])
+      if (err != nil) {
+        panic(err)
+      }
+      children = append(children, Child{
+        colour: b[2],
+        amount: amt, 
+      })
     }
-
+  } else {
+    fmt.Println("no child bags");
   }
 
-  return Rule{}
   return Rule{
-    container: "ryan",
-    children: []Child{
-      Child{
-        colour: "blue",
-        amount: 10,
-      },
-    },
+    container: container,
+    children: children,
   }
 }
 
-func solve_puzzle(file_name string) {
-  fmt.Printf("%s\n", file_name)
+func solve_puzzle(file_path string) {
+  file, err := os.Open(file_path)
+  if (err != nil) {
+    panic(err)
+  }
+  defer file.Close()
+
+  rules := make(map[Colour][]Child)
+
+  scanner := bufio.NewScanner(file)
+  for scanner.Scan() {
+    line := scanner.Text()
+
+    rule := line_to_rule(line)
+    rules[rule.container] = rule.children
+  }
+  if err := scanner.Err(); err != nil {
+    panic(err)
+  }
+
+  fmt.Printf("%s\n", file_path)
 }
 
 func main() {
-  for _, file_name := range os.Args[1:] {
-    solve_puzzle(file_name)
+  for _, file_path := range os.Args[1:] {
+    solve_puzzle(file_path)
   }
 
   fmt.Printf("%#v\n", line_to_rule("light red bags contain 1 bright white bag, 2 muted yellow bags."));
