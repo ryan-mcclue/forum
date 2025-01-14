@@ -1,12 +1,14 @@
-//package main
+//go:build release
+
+package main
 
 import (
+	"bufio"
 	"fmt"
 	"os"
-	"bufio"
-	"strings"
 	"regexp"
 	"strconv"
+	"strings"
 )
 
 // alias, not new incompatible type
@@ -82,6 +84,3 @@ func main() {
 
 	fmt.Printf("%#v\n", line_to_rule("light red bags contain 1 bright white bag, 2 muted yellow bags."))
 }
-
-
-

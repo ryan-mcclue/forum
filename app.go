@@ -3,8 +3,8 @@ package forum
 import (
 	"forum/cfg"
 
-	"go.hasan.dev/vbeam"
-	"go.hasan.dev/vbolt"
+	"go.hasen.dev/vbeam"
+	"go.hasen.dev/vbolt"
 )
 
 func MakeApplication() *vbeam.Application {
