@@ -60,6 +60,8 @@ func main() {
 	os.Mkdir(".serve/static", 0644)
 	os.Mkdir(".serve/frontend", 0644)
 
+	os.Mkdir(".serve/data", 0644)
+
 	var args local_ui.LocalServerArgs
 	args.Domain = Domain
 	args.Port = Port
