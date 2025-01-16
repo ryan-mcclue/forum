@@ -16,7 +16,27 @@ func MakeApplication() *vbeam.Application {
 	// set up RPC
 	var app = vbeam.NewApplication("HandcraftedForum", db)
 
+	vbeam.RegisterProc(app, AddUser)
+
 	return app
+}
+
+var usernames []string
+
+type AddUserRequest struct {
+	Username string
+}
+
+type UserListResponse struct {
+	AllUsernames []string
+}
+
+// https://hasen.substack.com/p/automagic-go-typescript-interface
+
+func AddUser(ctx *vbeam.Context, req AddUserRequest) (resp UserListResponse, err error) {
+	usernames = append(usernames, req.Username)
+	resp.AllUsernames = usernames
+	return
 }
 
 // local server from filesystem, dev from RAM
