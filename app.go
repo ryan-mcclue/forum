@@ -1,23 +1,28 @@
 package forum
 
 import (
+	"errors"
 	"forum/cfg"
 
+	"go.hasen.dev/generic"
 	"go.hasen.dev/vbeam"
 	"go.hasen.dev/vbolt"
+	"go.hasen.dev/vpack"
+
+	"golang.org/x/crypto/bcrypt"
 )
 
 var dbInfo vbolt.Info
 
 type User struct {
-	Id int
+	Id       int
 	Username string
-	Email string
-	IsAdmin bool
+	Email    string
+	IsAdmin  bool
 }
 
 // buckets (map)
-// indexes (bidirectional multimap: many-to-manys?) 
+// indexes (bidirectional multimap: many-to-manys?)
 // collections (hierarchy of keys?)
 
 // both serialisation/deserialisation
@@ -33,15 +38,6 @@ func PackUser(self *User, buf *vpack.Buffer) {
 var UsersBkt = vbolt.Bucket(&dbInfo, "users", vpack.FInt, PackUser)
 var PasswdBkt = vbolt.Bucket(&dbInfo, "passwd", vpack.FInt, vpack.ByteSlice)
 var UsernameBkt = vbolt.Bucket(&dbInfo, "username", vpack.StringZ, vpack.Int)
-
-// NOTE: no pagination
-func fetchUsers(tx *vbolt.Tx) (users []User) {
-	vbolt.IterateAll(tx, UsersBkt, func(key int, value User) bool {
-		generic.Append(&users, value)
-		return true
-	})
-	return
-}
 
 // local server from filesystem, dev from RAM
 func MakeApplication() *vbeam.Application {
@@ -67,27 +63,63 @@ func MakeApplication() *vbeam.Application {
 // REST is a network architecture that enforces a hypermedia constraint, i.e. returns HTML and so is self-describing.
 // This is in contrast to RPC (e.g. JSON), where you would have to know how to interpret fields, i.e. have out-of-band knowledge (server and client are coupled)
 
+// var usernames []string
+// var usernames = make([]string, 0)
 
-//var usernames []string
-var usernames = make([]string, 0)
-
-type AddUserRequest struct {
-	Username string
-}
-
-type UserListResponse struct {
-	AllUsernames []string
-}
-
-func AddUser(ctx *vbeam.Context, req AddUserRequest) (resp UserListResponse, err error) {
-	usernames = append(usernames, req.Username)
-	resp.AllUsernames = usernames
+func fetchUsers(tx *vbolt.Tx) (users []User) {
+	vbolt.IterateAll(tx, UsersBkt, func(key int, value User) bool {
+		generic.Append(&users, value)
+		return true
+	})
 	return
 }
 
-type EmptyRequest struct {}
+type AddUserRequest struct {
+	Username string
+	Email    string
+	Password string
+}
+
+type UserListResponse struct {
+	Users []User
+}
+
+var UsernameTaken = errors.New("UsernameTaken")
+
+func AddUser(ctx *vbeam.Context, req AddUserRequest) (resp UserListResponse, err error) {
+	if vbolt.HasKey(ctx.Tx, UsernameBkt, req.Username) {
+		err = UsernameTaken
+		return
+	}
+
+	hash, _ := bcrypt.GenerateFromPassword([]byte(req.Password), bcrypt.DefaultCost)
+
+	// start write transaction
+	vbeam.UseWriteTx(ctx)
+
+	var user User
+	user.Id = vbolt.NextIntId(ctx.Tx, UsersBkt)
+	user.Username = req.Username
+	user.Email = req.Email
+	user.IsAdmin = user.Id < 2
+
+	vbolt.Write(ctx.Tx, UsersBkt, user.Id, &user)
+	vbolt.Write(ctx.Tx, PasswdBkt, user.Id, &hash)
+	vbolt.Write(ctx.Tx, UsernameBkt, user.Username, &user.Id)
+
+	// commit transaction
+	vbolt.TxCommit(ctx.Tx)
+
+	resp.Users = fetchUsers(ctx.Tx)
+	generic.EnsureSliceNotNil(&resp.Users)
+
+	return
+}
+
+type EmptyRequest struct{}
 
 func ListUsers(ctx *vbeam.Context, req EmptyRequest) (resp UserListResponse, err error) {
-	resp.AllUsernames = usernames
+	resp.Users = fetchUsers(ctx.Tx)
+	generic.EnsureSliceNotNil(&resp.Users)
 	return
 }
