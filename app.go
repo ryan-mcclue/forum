@@ -107,12 +107,11 @@ func AddUser(ctx *vbeam.Context, req AddUserRequest) (resp UserListResponse, err
 	vbolt.Write(ctx.Tx, PasswdBkt, user.Id, &hash)
 	vbolt.Write(ctx.Tx, UsernameBkt, user.Username, &user.Id)
 
-	// commit transaction
-	vbolt.TxCommit(ctx.Tx)
-
 	resp.Users = fetchUsers(ctx.Tx)
 	generic.EnsureSliceNotNil(&resp.Users)
 
+	// commit transaction
+	vbolt.TxCommit(ctx.Tx)
 	return
 }
 
