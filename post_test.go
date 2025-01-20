@@ -47,6 +47,8 @@ func TestPosting(t *testing.T) {
 	}
 
 	for tag, count := range tagsCount {
+		// go test -v
+		t.Logf("%s =>", tag)
 		var ctx vbeam.Context
 		ctx.Tx = vbolt.ReadTx(db)
 

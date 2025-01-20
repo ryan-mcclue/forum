@@ -57,7 +57,11 @@ func PackPost(self *Post, buf *vpack.Buffer) {
 
 var PostsBkt = vbolt.Bucket(&dbInfo, "posts", vpack.FInt, PackPost)
 
-// user_id -> post_id
+// cursor pagination based on bytes, so cannot say jump to page 20 like with an offset
+// however, apart from that more efficient
+// keys are 3-tuple (term, priority, target)
+// (user_id1, 12:01, post_id1)
+// (user_id1, 12:02, post_id2)
 var UserPostsIdx = vbolt.IndexExt(&dbInfo, "user-posts", vpack.FInt, vpack.UnixTimeKey, vpack.FInt)
 
 // hashtag -> post_id
@@ -67,6 +71,8 @@ type CreatePostRequest struct {
 	UserId  int
 	Content string
 }
+
+// TODO: unify with codepaths over intertwining
 
 func CreatePost(ctx *vbeam.Context, req CreatePostRequest) (resp Post, err error) {
 	const MaxPostSize = 1024
